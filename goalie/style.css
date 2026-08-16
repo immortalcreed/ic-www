@@ -142,6 +142,73 @@ html, body {
 #hud-pct {
     font-size: 11px;
     color: rgba(255, 255, 255, 0.42);
+    transition: font-size 0.4s ease, color 0.4s ease, font-weight 0.4s ease;
+}
+
+#hud-pct.goal-reached {
+    font-size: 22px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+#hud-bonus {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    margin-top: 14px;
+    padding-top: 12px;
+}
+
+.hud-op {
+    color: rgba(255, 255, 255, 0.28);
+    font-weight: 300;
+    margin-right: 5px;
+}
+
+#hud-bonus-plus {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 5px;
+}
+
+#hud-target-echo {
+    color: rgba(255, 255, 255, 0.55);
+}
+
+#hud-bonus-amt {
+    color: #fb923c;
+}
+
+.hud-contacts {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1.4px;
+    color: rgba(255, 255, 255, 0.40);
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+#hud-bonus-total {
+    font-size: 28px;
+    font-weight: 700;
+}
+
+#hud-total-amt {
+    display: inline-block;
+    color: #facc15;
+    animation: bonus-glow 2.6s ease-in-out infinite;
+}
+
+@keyframes bonus-glow {
+    0%, 100% {
+        transform: scale(1);
+        text-shadow: none;
+    }
+    50% {
+        transform: scale(1.13);
+        text-shadow:
+            0 0 6px  rgba(250, 204, 21, 1),
+            0 0 20px rgba(250, 204, 21, 0.65),
+            0 0 48px rgba(250, 204, 21, 0.25);
+    }
 }
 
 /* ================================================================

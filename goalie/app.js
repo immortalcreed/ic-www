@@ -12,23 +12,27 @@ const OVERLAY_IMAGE = 'overlay.jpg';
 const COLS = 32;
 const ROWS = 16;
 
-// Milliseconds between each tile rip during a cascade (lower = faster)
-const TILE_DELAY = 100;
+// Milliseconds between each tile rip — starts here, accelerates to MIN by end of cascade
+const TILE_DELAY     = 100;
+const TILE_DELAY_MIN = 12;
 
-// Duration of a single rip animation in ms (keep in sync with CSS @keyframes rip)
-const RIP_DURATION = 500;
+// Duration of a single rip animation in ms — starts here, accelerates to MIN by end of cascade
+const RIP_DURATION     = 500;
+const RIP_DURATION_MIN = 80;
 
 // ================================================================
 
 const TOTAL = COLS * ROWS;
 
 const state = {
-    target:   0,
-    current:  0,
-    revealed: 0,
-    order:    [],   // shuffled removal order (tile indices)
-    tiles:    [],   // tile DOM elements, indexed row-major (row 0 L→R, then row 1…)
-    busy:     false,
+    target:    0,
+    current:   0,
+    revealed:  0,
+    order:     [],   // shuffled removal order (tile indices)
+    tiles:     [],   // tile DOM elements, indexed row-major (row 0 L→R, then row 1…)
+    busy:      false,
+    completed: false,
+    animating: false,
 };
 
 // ----------------------------------------------------------------
@@ -43,6 +47,7 @@ function init() {
     base.style.backgroundRepeat   = 'no-repeat';
 
     initFireworks();
+    initFire();
     buildTiles();
     updateHUD();
 }
@@ -91,17 +96,21 @@ function handleSetTarget() {
     }
 
     // Reset everything
-    state.target   = targetVal;
-    state.current  = 0;
-    state.revealed = 0;
-    state.order    = shuffle(Array.from({ length: TOTAL }, (_, i) => i));
-    state.busy     = false;
+    state.target    = targetVal;
+    state.current   = 0;
+    state.revealed  = 0;
+    state.order     = shuffle(Array.from({ length: TOTAL }, (_, i) => i));
+    state.busy      = false;
+    state.completed = false;
+    state.animating = false;
 
     document.getElementById('in-current').value = '';
     document.getElementById('in-current').placeholder = '0';
     document.getElementById('btn-reveal').disabled = false;
-    document.getElementById('complete-banner').classList.remove('show');
+    const banner = document.getElementById('complete-banner');
+    banner.classList.remove('show', 'pulsing');
     document.getElementById('hud-current').classList.remove('complete');
+    document.getElementById('hud-pct').classList.remove('goal-reached');
 
     buildTiles();
     updateHUD();
@@ -129,18 +138,26 @@ function handleReveal() {
     closePanel();
 
     const prev       = state.current;
-    state.current    = Math.min(newVal, state.target);
+    state.current    = newVal;
     currentEl.value  = '';
     currentEl.placeholder = state.current.toLocaleString();
 
-    const targetRevealed = Math.round((state.current / state.target) * TOTAL);
+    const targetRevealed = Math.round((Math.min(state.current, state.target) / state.target) * TOTAL);
     const toReveal       = Math.max(0, targetRevealed - state.revealed);
-    const ripDuration    = toReveal > 0 ? (toReveal - 1) * TILE_DELAY + RIP_DURATION : 0;
+    const ripDuration    = toReveal <= 0 ? 0
+        : toReveal === 1 ? RIP_DURATION
+        : (toReveal - 1) * (TILE_DELAY + TILE_DELAY_MIN) / 2 + RIP_DURATION_MIN;
 
-    updateHUD(prev, ripDuration);
+    // When the new value exceeds the target, compress the cascade so all tiles
+    // finish exactly when the counter visually crosses the target.
+    const cascadeScale = (!state.completed && state.current > state.target && prev < state.target && state.current > prev)
+        ? (state.target - prev) / (state.current - prev)
+        : 1;
+
+    updateHUD(prev, ripDuration, ripDuration * cascadeScale);
 
     if (toReveal > 0) {
-        cascade(toReveal);
+        cascade(toReveal, cascadeScale);
     }
 }
 
@@ -148,39 +165,55 @@ function handleReveal() {
 //  Cascade: rip `count` tiles one by one
 // ----------------------------------------------------------------
 
-function cascade(count) {
+function cascade(count, scale = 1) {
     state.busy = true;
     document.getElementById('btn-reveal').disabled = true;
+    syncToggleBtn();
 
+    // Pre-calculate each tile's absolute fire time so there's no cumulative drift.
+    const schedule = [];
+    let accum = 0;
+    for (let i = 0; i < count; i++) {
+        const frac = count > 1 ? i / (count - 1) : 0;
+        schedule.push(accum);
+        accum += (TILE_DELAY + (TILE_DELAY_MIN - TILE_DELAY) * frac) * scale;
+    }
+
+    const startTime = performance.now();
     let done = 0;
 
-    function next() {
-        if (done >= count || state.revealed >= TOTAL) {
+    function tick(now) {
+        const elapsed = now - startTime;
+
+        while (done < count && state.revealed < TOTAL && schedule[done] <= elapsed) {
+            const frac   = count > 1 ? done / (count - 1) : 0;
+            const ripDur = RIP_DURATION + (RIP_DURATION_MIN - RIP_DURATION) * frac;
+            ripTile(state.tiles[state.order[state.revealed]], ripDur);
+            state.revealed++;
+            done++;
+        }
+
+        if (done < count && state.revealed < TOTAL) {
+            requestAnimationFrame(tick);
+        } else {
             state.busy = false;
             document.getElementById('btn-reveal').disabled = false;
             if (state.revealed >= TOTAL) showComplete();
-            return;
+            syncToggleBtn();
         }
-
-        const tileIdx = state.order[state.revealed];
-        ripTile(state.tiles[tileIdx]);
-        state.revealed++;
-        done++;
-
-        setTimeout(next, TILE_DELAY);
     }
 
-    next();
+    requestAnimationFrame(tick);
 }
 
 // ----------------------------------------------------------------
 //  Single tile rip
 // ----------------------------------------------------------------
 
-function ripTile(tile) {
+function ripTile(tile, ripDur = RIP_DURATION) {
     // Random direction, angle, and flight distance
     const angleDeg = (Math.random() - 0.5) * 60;           // –30 … +30°
-    const radDir   = Math.random() * 2 * Math.PI;
+    const radDir   = -Math.PI / 2 + (Math.random() - 0.5) * (Math.PI / 2);
     const dist     = 300 + Math.random() * 280;
     const tx       = Math.cos(radDir) * dist;
     const ty       = Math.sin(radDir) * dist;
@@ -188,11 +221,12 @@ function ripTile(tile) {
     tile.style.setProperty('--rip-r',   `${angleDeg}deg`);
     tile.style.setProperty('--rip-x',   `${tx}px`);
     tile.style.setProperty('--rip-y',   `${ty}px`);
-    tile.style.setProperty('--rip-dur', `${RIP_DURATION}ms`);
+    tile.style.setProperty('--rip-dur', `${ripDur}ms`);
 
     // Apply torn polygon clip-path right before animating
     tile.style.clipPath = tornEdge();
 
+    spawnFire(tile, ripDur);
     tile.classList.add('ripping');
 
     tile.addEventListener('animationend', () => {
@@ -224,7 +258,7 @@ function tornEdge() {
 //  HUD
 // ----------------------------------------------------------------
 
-function updateHUD(fromVal, animDuration) {
+function updateHUD(fromVal, animDuration, barDuration = animDuration) {
     const pct  = state.target > 0 ? (state.current / state.target) * 100 : 0;
     const fill = document.getElementById('hud-fill');
 
@@ -234,27 +268,55 @@ function updateHUD(fromVal, animDuration) {
     if (fromVal !== undefined && animDuration > 0) {
         const fromPct = state.target > 0 ? (fromVal / state.target) * 100 : 0;
         animateCounter(fromVal, state.current, fromPct, pct, animDuration);
-        fill.style.transition = `width ${animDuration}ms linear`;
+        fill.style.transition = `width ${barDuration}ms linear`;
     } else {
         document.getElementById('hud-current').textContent =
             state.current.toLocaleString();
-        document.getElementById('hud-pct').textContent =
-            state.target > 0 ? `${Math.round(pct)}% of goal` : 'Set a target below';
+        const pctEl = document.getElementById('hud-pct');
+        pctEl.textContent = state.target > 0 ? `${Math.round(pct)}% of goal` : 'Set a target below';
+        pctEl.classList.toggle('goal-reached', state.target > 0 && state.current >= state.target);
         fill.style.transition = 'width 0.9s ease';
+        updateBonus(state.current);
     }
 
     fill.style.width = `${Math.min(100, pct)}%`;
 }
 
+function updateBonus(current) {
+    const bonus  = Math.max(0, current - state.target);
+    const bonusEl = document.getElementById('hud-bonus');
+    if (bonus > 0 && state.target > 0) {
+        bonusEl.style.display = 'block';
+        document.getElementById('hud-target-echo').textContent = state.target.toLocaleString();
+        document.getElementById('hud-bonus-amt').textContent = bonus.toLocaleString();
+        document.getElementById('hud-total-amt').textContent = current.toLocaleString();
+    } else {
+        bonusEl.style.display = 'none';
+    }
+}
+
 function animateCounter(from, to, fromPct, toPct, duration) {
+    state.animating = true;
+    syncToggleBtn();
     const el     = document.getElementById('hud-current');
     const pctEl  = document.getElementById('hud-pct');
     const start  = performance.now();
     function tick(now) {
-        const t = Math.min((now - start) / duration, 1);
-        el.textContent    = Math.round(from + (to - from) * t).toLocaleString();
+        const t   = Math.min((now - start) / duration, 1);
+        const cur = Math.round(from + (to - from) * t);
+        el.textContent    = cur.toLocaleString();
         pctEl.textContent = `${Math.round(fromPct + (toPct - fromPct) * t)}% of goal`;
-        if (t < 1) requestAnimationFrame(tick);
+        pctEl.classList.toggle('goal-reached', state.target > 0 && cur >= state.target);
+        updateBonus(cur);
+        if (!state.completed && state.target > 0 && cur >= state.target) {
+            showComplete();
+        }
+        if (t < 1) {
+            requestAnimationFrame(tick);
+        } else {
+            state.animating = false;
+            syncToggleBtn();
+        }
     }
     requestAnimationFrame(tick);
 }
@@ -264,6 +326,8 @@ function animateCounter(from, to, fromPct, toPct, duration) {
 // ----------------------------------------------------------------
 
 function showComplete() {
+    if (state.completed) return;
+    state.completed = true;
     document.getElementById('hud-current').classList.add('complete');
     const banner = document.getElementById('complete-banner');
     banner.offsetWidth; // force reflow
@@ -278,15 +342,21 @@ function showComplete() {
 //  UI helpers
 // ----------------------------------------------------------------
 
+function syncToggleBtn() {
+    const panelOpen = !document.getElementById('panel').hasAttribute('hidden');
+    document.getElementById('toggle-btn').classList.toggle('hidden',
+        panelOpen || state.busy || state.animating);
+}
+
 function openPanel() {
     document.getElementById('panel').removeAttribute('hidden');
-    document.getElementById('toggle-btn').classList.add('hidden');
+    syncToggleBtn();
     document.getElementById('in-current').focus();
 }
 
 function closePanel() {
     document.getElementById('panel').setAttribute('hidden', '');
-    document.getElementById('toggle-btn').classList.remove('hidden');
+    syncToggleBtn();
 }
 
 function togglePanel() {
@@ -439,6 +509,96 @@ function fireworksLoop() {
     ctx.globalAlpha = 1;
 
     FW.animId = requestAnimationFrame(fireworksLoop);
+}
+
+// ----------------------------------------------------------------
+//  Fire particles
+// ----------------------------------------------------------------
+
+const FIRE = {
+    canvas: null,
+    ctx: null,
+    particles: [],
+};
+
+function initFire() {
+    FIRE.canvas = document.createElement('canvas');
+    FIRE.canvas.style.cssText =
+        'position:fixed;inset:0;z-index:50;pointer-events:none;';
+    document.body.appendChild(FIRE.canvas);
+    FIRE.ctx = FIRE.canvas.getContext('2d');
+    const resize = () => {
+        FIRE.canvas.width  = window.innerWidth;
+        FIRE.canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+    fireLoop();
+}
+
+function spawnFire(tile, ripDur = RIP_DURATION) {
+    const end = performance.now() + ripDur;
+
+    function emit() {
+        if (performance.now() >= end) return;
+
+        const rect = tile.getBoundingClientRect();
+        if (rect.width < 0.5) return;            // tile scaled away, stop
+
+        const cx   = rect.left + rect.width  * 0.5;
+        const cy   = rect.top  + rect.height * 0.5;
+        const base = Math.max(rect.width, rect.height);
+        const count = 2 + Math.floor(Math.random() * 2);
+
+        for (let i = 0; i < count; i++) {
+            FIRE.particles.push({
+                x:      cx + (Math.random() - 0.5) * rect.width  * 0.7,
+                y:      cy + (Math.random() - 0.5) * rect.height * 0.7,
+                vx:     (Math.random() - 0.5) * 1.8,
+                vy:     -(2.5 + Math.random() * 3.5),
+                alpha:  0.75 + Math.random() * 0.25,
+                hue:    10 + Math.random() * 30,
+                size:   base * 0.18 * (0.5 + Math.random() * 0.8),
+                decay:  0.014 + Math.random() * 0.016,
+                wobble: Math.random() * Math.PI * 2,
+            });
+        }
+
+        requestAnimationFrame(emit);
+    }
+
+    requestAnimationFrame(emit);
+}
+
+function fireLoop() {
+    const { ctx, canvas, particles } = FIRE;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.wobble += 0.25;
+        p.x      += p.vx + Math.sin(p.wobble) * 0.7;
+        p.y      += p.vy;
+        p.vy     -= 0.08;            // accelerate upward
+        p.size   *= 0.97;
+        p.alpha  -= p.decay;
+
+        if (p.alpha <= 0 || p.size < 0.5) { particles.splice(i, 1); continue; }
+
+        // Radial gradient: white-yellow core → orange → red rim → transparent
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size);
+        g.addColorStop(0,    `hsla(55, 100%, 95%, ${p.alpha})`);
+        g.addColorStop(0.25, `hsla(45, 100%, 70%, ${p.alpha})`);
+        g.addColorStop(0.6,  `hsla(${p.hue}, 100%, 52%, ${p.alpha * 0.8})`);
+        g.addColorStop(1,    `hsla(${p.hue - 5}, 90%, 35%, 0)`);
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = g;
+        ctx.fill();
+    }
+
+    requestAnimationFrame(fireLoop);
 }
 
 // ----------------------------------------------------------------
