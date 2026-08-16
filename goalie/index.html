@@ -30,7 +30,7 @@
         <div class="field-row">
             <div class="field">
                 <label for="in-current">Current Total Contacts</label>
-                <input id="in-current" type="number" placeholder="0" min="0" onkeydown="if(event.key==='Enter')handleReveal()">
+                <input id="in-current" type="number" placeholder="0" min="0" onkeydown="if(event.key==='Enter')handleReveal()" oninput="document.getElementById('btn-reveal').disabled=!this.value">
             </div>
             <button id="btn-reveal" onclick="handleReveal()" disabled>Reveal</button>
         </div>
@@ -38,6 +38,9 @@
 
     <!-- Toggle button -->
     <button id="toggle-btn" onclick="togglePanel()" title="Toggle Controls">&#9881;&nbsp;&nbsp;Update</button>
+
+    <!-- Reset button — only visible when panel is open -->
+    <button id="btn-reset" class="hidden" onclick="handleReset()">Reset to 0</button>
 
     <div id="complete-banner">GOAL REACHED!</div>
 

@@ -14,11 +14,11 @@ const ROWS = 16;
 
 // Milliseconds between each tile rip — starts here, accelerates to MIN by end of cascade
 const TILE_DELAY     = 80;
-const TILE_DELAY_MIN = 8;
+const TILE_DELAY_MIN = 50;
 
 // Duration of a single rip animation in ms — starts here, accelerates to MIN by end of cascade
 const RIP_DURATION     = 400;
-const RIP_DURATION_MIN = 80;
+const RIP_DURATION_MIN = 200;
 
 // ================================================================
 
@@ -48,7 +48,31 @@ function init() {
 
     initFireworks();
     initFire();
+
+    // Load persisted state from localStorage; fall back to a fresh session.
+    let saved = {};
+    try { saved = JSON.parse(localStorage.getItem('goalie-state') || '{}'); } catch {}
+
+    if (saved.target) {
+        state.target   = saved.target;
+        state.current  = saved.current  ?? 0;
+        state.revealed = saved.revealed ?? 0;
+        state.order    = saved.order    ?? buildOrder();
+    } else {
+        state.target = 8000;
+        state.order  = buildOrder();
+        saveState();
+    }
+
     buildTiles();
+
+    // Re-hide tiles already revealed in a previous session.
+    for (let i = 0; i < state.revealed; i++) {
+        state.tiles[state.order[i]].style.visibility = 'hidden';
+    }
+
+    if (saved.completed) showComplete();
+
     updateHUD();
 }
 
@@ -99,7 +123,7 @@ function handleSetTarget() {
     state.target    = targetVal;
     state.current   = 0;
     state.revealed  = 0;
-    state.order     = shuffle(Array.from({ length: TOTAL }, (_, i) => i));
+    state.order     = buildOrder();
     state.busy      = false;
     state.completed = false;
     state.animating = false;
@@ -114,6 +138,13 @@ function handleSetTarget() {
 
     buildTiles();
     updateHUD();
+    saveState();
+}
+
+function handleReset() {
+    if (!confirm('Reset all progress to 0? WARNING: All current progress will be lost! Cancel to abort reset or OK to proceed.')) return;
+    stopFireworks();
+    handleSetTarget();
 }
 
 function handleReveal() {
@@ -163,6 +194,8 @@ function handleReveal() {
 
     if (toReveal > 0) {
         cascade(toReveal, delayScale);
+    } else {
+        saveState();
     }
 }
 
@@ -205,6 +238,7 @@ function cascade(count, scale = 1) {
             document.getElementById('btn-reveal').disabled = false;
             if (state.revealed >= TOTAL) showComplete();
             syncToggleBtn();
+            saveState();
         }
     }
 
@@ -355,12 +389,14 @@ function syncToggleBtn() {
 
 function openPanel() {
     document.getElementById('panel').removeAttribute('hidden');
+    document.getElementById('btn-reset').classList.remove('hidden');
     syncToggleBtn();
     document.getElementById('in-current').focus();
 }
 
 function closePanel() {
     document.getElementById('panel').setAttribute('hidden', '');
+    document.getElementById('btn-reset').classList.add('hidden');
     syncToggleBtn();
 }
 
@@ -375,6 +411,20 @@ function shuffle(arr) {
         [a[i], a[j]] = [a[j], a[i]];
     }
     return a;
+}
+
+// Tile removal order: prefer tiles furthest from centre, with noise so it
+// isn't perfectly spiral. Score = euclidean distance + random(0..8).
+// Sorted descending so outer tiles tend to go first.
+function buildOrder() {
+    const cx = COLS / 2 - 0.5;
+    const cy = ROWS / 2 - 0.5;
+    return Array.from({ length: TOTAL }, (_, i) => ({
+        idx:   i,
+        score: Math.hypot(i % COLS - cx, Math.floor(i / COLS) - cy) + Math.random() * 8,
+    }))
+    .sort((a, b) => b.score - a.score)
+    .map(w => w.idx);
 }
 
 // ----------------------------------------------------------------
@@ -404,6 +454,14 @@ function initFireworks() {
     };
     resize();
     window.addEventListener('resize', resize);
+}
+
+function stopFireworks() {
+    FW.active = false;
+    if (FW.animId) { cancelAnimationFrame(FW.animId); FW.animId = null; }
+    FW.rockets = [];
+    FW.particles = [];
+    if (FW.canvas) FW.canvas.style.display = 'none';
 }
 
 function startFireworks() {
@@ -607,9 +665,23 @@ function fireLoop() {
 }
 
 // ----------------------------------------------------------------
+//  Server state persistence
+// ----------------------------------------------------------------
+
+function saveState() {
+    try {
+        localStorage.setItem('goalie-state', JSON.stringify({
+            target:    state.target,
+            current:   state.current,
+            revealed:  state.revealed,
+            order:     state.order,
+            completed: state.completed,
+        }));
+    } catch {}
+}
+
+// ----------------------------------------------------------------
 //  Start
 // ----------------------------------------------------------------
 
 init();
-
-handleSetTarget();
