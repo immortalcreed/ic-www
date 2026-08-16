@@ -9,8 +9,8 @@ const BASE_IMAGE = 'base.jpg';
 const OVERLAY_IMAGE = 'overlay.jpg';
 
 // Grid dimensions — total sections = COLS × ROWS
-const COLS = 12;
-const ROWS = 10;
+const COLS = 20;
+const ROWS = 12;
 
 // Milliseconds between each tile rip during a cascade (lower = faster)
 const TILE_DELAY = 110;
@@ -86,7 +86,8 @@ function buildTiles() {
 // ----------------------------------------------------------------
 
 function handleSetTarget() {
-    const targetVal = parseInt(document.getElementById('in-target').value);
+    // const targetVal = parseInt(document.getElementById('in-target').value);
+    const targetVal = 8000;
 
     if (!targetVal || targetVal < 1) {
         document.getElementById('in-target').focus();
@@ -273,3 +274,5 @@ function shuffle(arr) {
 // ----------------------------------------------------------------
 
 init();
+
+handleSetTarget();

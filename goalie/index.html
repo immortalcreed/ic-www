@@ -23,28 +23,18 @@
 
     <!-- Control panel -->
     <div id="panel">
-        <div id="panel-header">Campaign Setup</div>
-
         <div class="field-row">
             <div class="field">
-                <label for="in-target">Target Calls</label>
-                <input id="in-target" type="number" placeholder="e.g. 500" min="1">
-            </div>
-            <button id="btn-set" onclick="handleSetTarget()">Set Target</button>
-        </div>
-
-        <div class="panel-divider"></div>
-
-        <div class="field-row">
-            <div class="field">
-                <label for="in-current">Current Calls</label>
+                <label for="in-current">Current Contacts</label>
                 <input id="in-current" type="number" placeholder="0" min="0">
             </div>
             <button id="btn-reveal" onclick="handleReveal()" disabled>Reveal</button>
         </div>
     </div>
 
+    <!-- Toggle button  
     <button id="toggle-btn" onclick="togglePanel()" title="Toggle Controls">&#9881;</button>
+    -->
 
     <div id="complete-banner">GOAL REACHED!</div>
 
