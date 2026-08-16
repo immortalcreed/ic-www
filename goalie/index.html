@@ -25,8 +25,8 @@
     <div id="panel" hidden="true">
         <div class="field-row">
             <div class="field">
-                <label for="in-current">Current Contacts</label>
-                <input id="in-current" type="number" placeholder="0" min="0">
+                <label for="in-current">Current Total Contacts</label>
+                <input id="in-current" type="number" placeholder="0" min="0" onkeydown="if(event.key==='Enter')handleReveal()">
             </div>
             <button id="btn-reveal" onclick="handleReveal()" disabled>Reveal</button>
         </div>

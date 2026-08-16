@@ -260,6 +260,7 @@ function showComplete() {
 function openPanel() {
     document.getElementById('panel').removeAttribute('hidden');
     document.getElementById('toggle-btn').classList.add('hidden');
+    document.getElementById('in-current').focus();
 }
 
 function closePanel() {
