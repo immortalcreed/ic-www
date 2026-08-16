@@ -20,20 +20,13 @@ html, body {
     inset: 0;
     z-index: 0;
 
-    /* ── YOUR BASE IMAGE (revealed as tiles are removed) ──────────
-       Uncomment and set your image path:
-       background: url('base.jpg') center / cover no-repeat;
-       ──────────────────────────────────────────────────────────── */
-    background: linear-gradient(135deg,
-        #0b4f2e 0%,
-        #1a7a4a 25%,
-        #0d6a7a 60%,
-        #0a3a6e 100%
-    );
+    background: url('base.jpg') center / cover no-repeat;
 }
 
 #overlay-layer {
     position: fixed;
+    width: 100%;
+    height: 100%;    
     inset: 0;
     z-index: 1;
 }
@@ -43,7 +36,7 @@ html, body {
    ================================================================ */
 
 .tile {
-    position: absolute;
+    position: relative;
     will-change: transform, opacity, clip-path;
 
     /* ── YOUR OVERLAY IMAGE (set in app.js → OVERLAY_IMAGE) ──────
@@ -55,7 +48,7 @@ html, body {
 /* Ripping state — added by JS just before the animation fires */
 .tile.ripping {
     z-index: 20;
-    animation: rip var(--rip-dur, 650ms) cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    animation: rip var(--rip-dur, 650ms) cubic-bezier(0.42, 0, 1, 1) forwards;
 }
 
 @keyframes rip {
@@ -165,13 +158,13 @@ html, body {
     border-radius: 18px;
     color: #fff;
     padding: 22px 28px;
-    width: 360px;
+    width: 220px;
     transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 #panel.hidden {
     opacity: 0;
-    transform: translateX(-50%) translateY(16px);
+    transform: translateY(10px);
     pointer-events: none;
 }
 
@@ -189,13 +182,18 @@ html, body {
     flex-direction: column;
     gap: 5px;
     flex: 1;
+    min-width: 0;
 }
 
 .field label {
-    font-size: 10px;
+    font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 1.2px;
     color: rgba(255, 255, 255, 0.45);
+    white-space: nowrap;
+    overflow: visible;
+    min-width: 0;
+    margin-bottom: 6px;
 }
 
 .field input {
@@ -292,26 +290,28 @@ button:active:not(:disabled) {
 
 #toggle-btn {
     position: fixed;
-    bottom: 24px;
-    right: 24px;
+    bottom: 16px;
+    right: 16px;
     z-index: 101;
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.65);
+    width: auto;
+    border-radius: 22px;
+    background: rgba(0, 0, 0, 0.70);
     border: 1px solid rgba(255, 255, 255, 0.18);
-    color: rgba(255, 255, 255, 0.70);
-    font-size: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    transition: background 0.18s, color 0.18s;
+    color: rgba(255, 255, 255, 0.80);
+    font-size: 14px;
+    padding: 10px 20px;
+    transition: background 0.18s, color 0.18s, opacity 0.2s ease, transform 0.2s ease;
 }
 
 #toggle-btn:hover {
-    background: rgba(0, 0, 0, 0.88);
+    background: rgba(0, 0, 0, 0.90);
     color: #fff;
+}
+
+#toggle-btn.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.85);
 }
 
 /* ================================================================
@@ -323,7 +323,6 @@ button:active:not(:disabled) {
     top: 50%;
     left: 50%;
     z-index: 200;
-    transform: translate(-50%, -50%) scale(0.75);
     background: rgba(21, 128, 61, 0.92);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -337,19 +336,41 @@ button:active:not(:disabled) {
     text-align: center;
     pointer-events: none;
     visibility: hidden;
-    opacity: 0;
-    transition:
-        transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
-        opacity   0.4s ease,
-        visibility 0s 0.4s;
 }
 
+/* Step 1: spring entrance */
 #complete-banner.show {
     visibility: visible;
-    opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
-    transition:
-        transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1),
-        opacity   0.4s ease,
-        visibility 0s 0s;
+    animation: banner-enter 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* Step 2 (added via JS after enter ends): continuous breathe */
+#complete-banner.pulsing {
+    animation: banner-breathe 3.4s ease-in-out infinite;
+}
+
+@keyframes banner-enter {
+    from { opacity: 0; transform: translate(-50%, -50%) scale(0.60); }
+    to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* Starts visible (matching enter end-state) so handoff is seamless */
+@keyframes banner-breathe {
+    0%   { opacity: 1;    transform: translate(-50%, -50%) scale(1); }
+    38%  { opacity: 1;    transform: translate(-50%, -50%) scale(1); }
+    58%  { opacity: 0;    transform: translate(-50%, -50%) scale(0.82); }
+    80%  { opacity: 0;    transform: translate(-50%, -50%) scale(0.82); }
+    100% { opacity: 1;    transform: translate(-50%, -50%) scale(1); }
+}
+
+/* ================================================================
+   FIREWORKS CANVAS
+   ================================================================ */
+
+#fireworks-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    pointer-events: none;
+    display: none;
 }

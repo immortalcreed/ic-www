@@ -9,14 +9,14 @@ const BASE_IMAGE = 'base.jpg';
 const OVERLAY_IMAGE = 'overlay.jpg';
 
 // Grid dimensions — total sections = COLS × ROWS
-const COLS = 20;
-const ROWS = 12;
+const COLS = 32;
+const ROWS = 16;
 
 // Milliseconds between each tile rip during a cascade (lower = faster)
-const TILE_DELAY = 110;
+const TILE_DELAY = 100;
 
 // Duration of a single rip animation in ms (keep in sync with CSS @keyframes rip)
-const RIP_DURATION = 650;
+const RIP_DURATION = 500;
 
 // ================================================================
 
@@ -42,6 +42,7 @@ function init() {
     base.style.backgroundPosition = 'center';
     base.style.backgroundRepeat   = 'no-repeat';
 
+    initFireworks();
     buildTiles();
     updateHUD();
 }
@@ -53,6 +54,9 @@ function init() {
 function buildTiles() {
     const layer = document.getElementById('overlay-layer');
     layer.innerHTML = '';
+    layer.style.display              = 'grid';
+    layer.style.gridTemplateColumns  = `repeat(${COLS}, 1fr)`;
+    layer.style.gridTemplateRows     = `repeat(${ROWS}, 1fr)`;
     state.tiles = [];
 
     for (let row = 0; row < ROWS; row++) {
@@ -60,20 +64,12 @@ function buildTiles() {
             const tile = document.createElement('div');
             tile.className = 'tile';
 
-            // Position and size within the overlay layer
-            tile.style.left   = `${(col / COLS) * 100}%`;
-            tile.style.top    = `${(row / ROWS) * 100}%`;
-            tile.style.width  = `${100 / COLS}%`;
-            tile.style.height = `${100 / ROWS}%`;
-
-            // Background-size renders the full overlay image across all tiles;
-            // background-position shifts it so each tile shows its own slice.
-            const bgPosX = COLS > 1 ? (col / (COLS - 1)) * 100 : 50;
-            const bgPosY = ROWS > 1 ? (row / (ROWS - 1)) * 100 : 50;
-
+            // Grid handles size/position; vw/vh background avoids subpixel rounding.
             tile.style.backgroundImage    = `url('${OVERLAY_IMAGE}')`;
-            tile.style.backgroundSize     = `${COLS * 100}% ${ROWS * 100}%`;
-            tile.style.backgroundPosition = `${bgPosX}% ${bgPosY}%`;
+            tile.style.backgroundSize     = '100vw 100vh';
+            tile.style.backgroundRepeat   = 'no-repeat';
+            tile.style.backgroundPosition =
+                `-${col * 100 / COLS}vw -${row * 100 / ROWS}vh`;
 
             layer.appendChild(tile);
             state.tiles.push(tile);
@@ -129,6 +125,8 @@ function handleReveal() {
         currentEl.focus();
         return;
     }
+
+    closePanel();
 
     const prev       = state.current;
     state.current    = Math.min(newVal, state.target);
@@ -247,17 +245,30 @@ function updateHUD() {
 function showComplete() {
     document.getElementById('hud-current').classList.add('complete');
     const banner = document.getElementById('complete-banner');
-    // Force a reflow so the transition fires reliably
-    banner.offsetWidth;
+    banner.offsetWidth; // force reflow
     banner.classList.add('show');
+    banner.addEventListener('animationend', () => {
+        banner.classList.add('pulsing');
+    }, { once: true });
+    startFireworks();
 }
 
 // ----------------------------------------------------------------
 //  UI helpers
 // ----------------------------------------------------------------
 
+function openPanel() {
+    document.getElementById('panel').removeAttribute('hidden');
+    document.getElementById('toggle-btn').classList.add('hidden');
+}
+
+function closePanel() {
+    document.getElementById('panel').setAttribute('hidden', '');
+    document.getElementById('toggle-btn').classList.remove('hidden');
+}
+
 function togglePanel() {
-    document.getElementById('panel').classList.toggle('hidden');
+    document.getElementById('panel').hasAttribute('hidden') ? openPanel() : closePanel();
 }
 
 function shuffle(arr) {
@@ -267,6 +278,145 @@ function shuffle(arr) {
         [a[i], a[j]] = [a[j], a[i]];
     }
     return a;
+}
+
+// ----------------------------------------------------------------
+//  Fireworks
+// ----------------------------------------------------------------
+
+const FW = {
+    canvas: null,
+    ctx: null,
+    active: false,
+    rockets: [],
+    particles: [],
+    animId: null,
+};
+
+function initFireworks() {
+    FW.canvas = document.getElementById('fireworks-canvas');
+    if (!FW.canvas) {
+        FW.canvas = document.createElement('canvas');
+        FW.canvas.id = 'fireworks-canvas';
+        document.body.appendChild(FW.canvas);
+    }
+    FW.ctx = FW.canvas.getContext('2d');
+    const resize = () => {
+        FW.canvas.width  = window.innerWidth;
+        FW.canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+}
+
+function startFireworks() {
+    FW.active    = true;
+    FW.rockets   = [];
+    FW.particles = [];
+    FW.canvas.style.display = 'block';
+
+    function schedule() {
+        if (!FW.active) return;
+        launchRocket();
+        if (Math.random() < 0.6) setTimeout(launchRocket, 180);
+        if (Math.random() < 0.3) setTimeout(launchRocket, 360);
+        setTimeout(schedule, 350 + Math.random() * 450);
+    }
+
+    schedule();
+    setTimeout(launchRocket, 80);
+    setTimeout(launchRocket, 200);
+
+    if (!FW.animId) FW.animId = requestAnimationFrame(fireworksLoop);
+
+    // runs indefinitely
+}
+
+function launchRocket() {
+    const w = FW.canvas.width;
+    const h = FW.canvas.height;
+    FW.rockets.push({
+        x:       w * 0.08 + Math.random() * w * 0.84,
+        y:       h,
+        targetY: h * 0.08 + Math.random() * h * 0.48,
+        vx:      (Math.random() - 0.5) * 2.5,
+        speed:   10 + Math.random() * 10,
+        hue:     Math.random() * 360,
+        trail:   [],
+    });
+}
+
+function explode(x, y, hue) {
+    const count = 80 + Math.floor(Math.random() * 60);
+    for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.4;
+        const speed = 1.5 + Math.random() * 7;
+        FW.particles.push({
+            x, y,
+            vx:      Math.cos(angle) * speed,
+            vy:      Math.sin(angle) * speed - 1.2,
+            alpha:   1,
+            hue:     hue + (Math.random() - 0.5) * 55,
+            size:    2 + Math.random() * 2.5,
+            decay:   0.009 + Math.random() * 0.013,
+            gravity: 0.055 + Math.random() * 0.04,
+            drag:    0.965 + Math.random() * 0.02,
+        });
+    }
+}
+
+function fireworksLoop() {
+    const { ctx, canvas, rockets, particles } = FW;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Rockets
+    for (let i = rockets.length - 1; i >= 0; i--) {
+        const r = rockets[i];
+        const dy = r.targetY - r.y;
+        r.vy = -Math.min(r.speed, Math.abs(dy));
+        r.x += r.vx;
+        r.y += r.vy;
+
+        r.trail.unshift({ x: r.x, y: r.y });
+        if (r.trail.length > 12) r.trail.pop();
+
+        r.trail.forEach((pt, idx) => {
+            const a = (1 - idx / r.trail.length) * 0.75;
+            const sz = 3 * (1 - idx / r.trail.length);
+            ctx.globalAlpha = a;
+            ctx.fillStyle   = `hsl(${r.hue}, 100%, 75%)`;
+            ctx.beginPath();
+            ctx.arc(pt.x, pt.y, sz, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        if (r.y <= r.targetY) {
+            explode(r.x, r.y, r.hue);
+            rockets.splice(i, 1);
+        }
+    }
+
+    // Particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.vx  *= p.drag;
+        p.vy   = p.vy * p.drag + p.gravity;
+        p.x   += p.vx;
+        p.y   += p.vy;
+        p.alpha -= p.decay;
+
+        if (p.alpha <= 0) { particles.splice(i, 1); continue; }
+
+        ctx.globalAlpha = p.alpha;
+        ctx.fillStyle   = `hsl(${p.hue}, 100%, 65%)`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * Math.min(p.alpha * 1.5, 1), 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    ctx.globalAlpha = 1;
+
+    FW.animId = requestAnimationFrame(fireworksLoop);
 }
 
 // ----------------------------------------------------------------
