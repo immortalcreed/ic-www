@@ -133,10 +133,11 @@ function handleReveal() {
     currentEl.value  = '';
     currentEl.placeholder = state.current.toLocaleString();
 
-    updateHUD();
-
     const targetRevealed = Math.round((state.current / state.target) * TOTAL);
     const toReveal       = Math.max(0, targetRevealed - state.revealed);
+    const ripDuration    = toReveal > 0 ? (toReveal - 1) * TILE_DELAY + RIP_DURATION : 0;
+
+    updateHUD(prev, ripDuration);
 
     if (toReveal > 0) {
         cascade(toReveal);
@@ -223,19 +224,39 @@ function tornEdge() {
 //  HUD
 // ----------------------------------------------------------------
 
-function updateHUD() {
-    const pct = state.target > 0
-        ? Math.round((state.current / state.target) * 100)
-        : 0;
+function updateHUD(fromVal, animDuration) {
+    const pct  = state.target > 0 ? (state.current / state.target) * 100 : 0;
+    const fill = document.getElementById('hud-fill');
 
-    document.getElementById('hud-current').textContent =
-        state.current.toLocaleString();
     document.getElementById('hud-target').textContent =
         state.target > 0 ? state.target.toLocaleString() : '—';
-    document.getElementById('hud-fill').style.width =
-        `${Math.min(100, pct)}%`;
-    document.getElementById('hud-pct').textContent =
-        state.target > 0 ? `${pct}% of goal` : 'Set a target below';
+
+    if (fromVal !== undefined && animDuration > 0) {
+        const fromPct = state.target > 0 ? (fromVal / state.target) * 100 : 0;
+        animateCounter(fromVal, state.current, fromPct, pct, animDuration);
+        fill.style.transition = `width ${animDuration}ms linear`;
+    } else {
+        document.getElementById('hud-current').textContent =
+            state.current.toLocaleString();
+        document.getElementById('hud-pct').textContent =
+            state.target > 0 ? `${Math.round(pct)}% of goal` : 'Set a target below';
+        fill.style.transition = 'width 0.9s ease';
+    }
+
+    fill.style.width = `${Math.min(100, pct)}%`;
+}
+
+function animateCounter(from, to, fromPct, toPct, duration) {
+    const el     = document.getElementById('hud-current');
+    const pctEl  = document.getElementById('hud-pct');
+    const start  = performance.now();
+    function tick(now) {
+        const t = Math.min((now - start) / duration, 1);
+        el.textContent    = Math.round(from + (to - from) * t).toLocaleString();
+        pctEl.textContent = `${Math.round(fromPct + (toPct - fromPct) * t)}% of goal`;
+        if (t < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
 }
 
 // ----------------------------------------------------------------
