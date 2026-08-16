@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campaign Reveal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="base-layer"></div>
+    <div id="overlay-layer"></div>
+
+    <!-- HUD: top-right progress display -->
+    <div id="hud">
+        <div id="hud-label">Campaign Progress</div>
+        <div id="hud-counter">
+            <span id="hud-current">0</span><span class="hud-slash"> / </span><span id="hud-target">—</span>
+        </div>
+        <div id="hud-track"><div id="hud-fill"></div></div>
+        <div id="hud-pct">Set a target below</div>
+    </div>
+
+    <!-- Control panel -->
+    <div id="panel">
+        <div id="panel-header">Campaign Setup</div>
+
+        <div class="field-row">
+            <div class="field">
+                <label for="in-target">Target Calls</label>
+                <input id="in-target" type="number" placeholder="e.g. 500" min="1">
+            </div>
+            <button id="btn-set" onclick="handleSetTarget()">Set Target</button>
+        </div>
+
+        <div class="panel-divider"></div>
+
+        <div class="field-row">
+            <div class="field">
+                <label for="in-current">Current Calls</label>
+                <input id="in-current" type="number" placeholder="0" min="0">
+            </div>
+            <button id="btn-reveal" onclick="handleReveal()" disabled>Reveal</button>
+        </div>
+    </div>
+
+    <button id="toggle-btn" onclick="togglePanel()" title="Toggle Controls">&#9881;</button>
+
+    <div id="complete-banner">GOAL REACHED!</div>
+
+    <script src="app.js"></script>
+</body>
+</html>
