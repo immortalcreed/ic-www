@@ -13,11 +13,11 @@ const COLS = 32;
 const ROWS = 16;
 
 // Milliseconds between each tile rip — starts here, accelerates to MIN by end of cascade
-const TILE_DELAY     = 100;
-const TILE_DELAY_MIN = 12;
+const TILE_DELAY     = 80;
+const TILE_DELAY_MIN = 8;
 
 // Duration of a single rip animation in ms — starts here, accelerates to MIN by end of cascade
-const RIP_DURATION     = 500;
+const RIP_DURATION     = 400;
 const RIP_DURATION_MIN = 80;
 
 // ================================================================
@@ -148,16 +148,21 @@ function handleReveal() {
         : toReveal === 1 ? RIP_DURATION
         : (toReveal - 1) * (TILE_DELAY + TILE_DELAY_MIN) / 2 + RIP_DURATION_MIN;
 
-    // When the new value exceeds the target, compress the cascade so all tiles
-    // finish exactly when the counter visually crosses the target.
+    // When the new value exceeds the target, compress the cascade so tiles finish
+    // when the counter visually crosses the target. sqrt(cascadeScale) gives a
+    // gentler compression so the start delay stays perceptible regardless of
+    // how large the bonus is. counterDuration is extended to match.
     const cascadeScale = (!state.completed && state.current > state.target && prev < state.target && state.current > prev)
         ? (state.target - prev) / (state.current - prev)
         : 1;
+    const delayScale     = Math.sqrt(cascadeScale);
+    const barDuration    = ripDuration * delayScale;
+    const counterDuration = cascadeScale < 1 ? barDuration / cascadeScale : ripDuration;
 
-    updateHUD(prev, ripDuration, ripDuration * cascadeScale);
+    updateHUD(prev, counterDuration, barDuration);
 
     if (toReveal > 0) {
-        cascade(toReveal, cascadeScale);
+        cascade(toReveal, delayScale);
     }
 }
 
