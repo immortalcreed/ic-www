@@ -13,12 +13,12 @@ const COLS = 32;
 const ROWS = 16;
 
 // Milliseconds between each tile rip — starts here, accelerates to MIN by end of cascade
-const TILE_DELAY     = 80;
-const TILE_DELAY_MIN = 50;
+const TILE_DELAY     = 70;
+const TILE_DELAY_MIN = 30;
 
 // Duration of a single rip animation in ms — starts here, accelerates to MIN by end of cascade
-const RIP_DURATION     = 400;
-const RIP_DURATION_MIN = 200;
+const RIP_DURATION     = 320;
+const RIP_DURATION_MIN = 160;
 
 // ================================================================
 
