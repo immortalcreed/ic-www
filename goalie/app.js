@@ -145,6 +145,7 @@ function handleReset() {
     if (!confirm('Reset all progress to 0? WARNING: All current progress will be lost! Cancel to abort reset or OK to proceed.')) return;
     stopFireworks();
     handleSetTarget();
+    closePanel();
 }
 
 function handleReveal() {
