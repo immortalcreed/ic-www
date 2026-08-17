@@ -320,10 +320,17 @@ function updateHUD(fromVal, animDuration, barDuration = animDuration) {
         pctEl.textContent = state.target > 0 ? `${Math.round(pct)}% of goal` : 'Set a target below';
         pctEl.classList.toggle('goal-reached', state.target > 0 && state.current >= state.target);
         fill.style.transition = 'width 0.9s ease';
+        setFillGradient(Math.min(100, pct));
         updateBonus(state.current);
     }
 
     fill.style.width = `${Math.min(100, pct)}%`;
+}
+
+function setFillGradient(pct) {
+    const hue = Math.min(240, pct * 2.4);
+    document.getElementById('hud-fill').style.background =
+        `linear-gradient(90deg, hsl(0,100%,50%), hsl(${hue},100%,60%))`;
 }
 
 function updateBonus(current) {
@@ -346,10 +353,12 @@ function animateCounter(from, to, fromPct, toPct, duration) {
     const pctEl  = document.getElementById('hud-pct');
     const start  = performance.now();
     function tick(now) {
-        const t   = Math.min((now - start) / duration, 1);
-        const cur = Math.round(from + (to - from) * t);
+        const t      = Math.min((now - start) / duration, 1);
+        const cur    = Math.round(from + (to - from) * t);
+        const curPct = fromPct + (toPct - fromPct) * t;
         el.textContent    = cur.toLocaleString();
-        pctEl.textContent = `${Math.round(fromPct + (toPct - fromPct) * t)}% of goal`;
+        pctEl.textContent = `${Math.round(curPct)}% of goal`;
+        setFillGradient(Math.min(100, curPct));
         pctEl.classList.toggle('goal-reached', state.target > 0 && cur >= state.target);
         updateBonus(cur);
         if (!state.completed && state.target > 0 && cur >= state.target) {

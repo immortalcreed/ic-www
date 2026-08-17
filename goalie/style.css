@@ -134,7 +134,6 @@ html, body {
 #hud-fill {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, #4ade80, #22c55e);
     border-radius: 3px;
     transition: width 0.9s ease;
 }
