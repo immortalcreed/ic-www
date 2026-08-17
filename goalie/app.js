@@ -142,7 +142,11 @@ function handleSetTarget() {
 }
 
 function handleReset() {
-    if (!confirm('Reset all progress to 0? WARNING: All current progress will be lost! Cancel to abort reset or OK to proceed.')) return;
+    document.getElementById('reset-dialog').showModal();
+}
+
+function confirmReset() {
+    document.getElementById('reset-dialog').close();
     stopFireworks();
     handleSetTarget();
     closePanel();

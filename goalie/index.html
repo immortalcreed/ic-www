@@ -42,6 +42,17 @@
     <!-- Reset button — only visible when panel is open -->
     <button id="btn-reset" class="hidden" onclick="handleReset()">Reset to 0</button>
 
+    <!-- Reset confirmation dialog -->
+    <dialog id="reset-dialog">
+        <p>Reset all progress to 0?</p>
+        <p id="reset-dialog-warn">WARNING! All current progress will be lost!</p>
+        <p id="reset-dialog-warn">Select Cancel to abort the reset.</p>
+        <div id="reset-dialog-actions">
+            <button id="reset-cancel" autofocus onclick="document.getElementById('reset-dialog').close()">Cancel</button>
+            <button id="reset-confirm" onclick="confirmReset()">Reset</button>
+        </div>
+    </dialog>
+
     <div id="complete-banner">GOAL REACHED!</div>
 
     <script src="app.js"></script>

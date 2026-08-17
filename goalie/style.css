@@ -379,6 +379,69 @@ button:active:not(:disabled) {
 }
 
 /* ================================================================
+   RESET CONFIRMATION DIALOG
+   ================================================================ */
+
+#reset-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    margin: 0;
+    background: rgba(8, 12, 22, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    color: #fff;
+    padding: 48px 52px;
+    width: 520px;
+    font-size: 28px;
+    font-weight: 600;
+}
+
+#reset-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+}
+
+#reset-dialog-warn {
+    font-size: 20px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.95);
+    margin-top: 8px;
+    margin-bottom: 24px;
+}
+
+#reset-dialog-actions {
+    display: flex;
+    gap: 14px;
+    justify-content: flex-end;
+}
+
+#reset-dialog-actions button {
+    font-size: 16px;
+    padding: 13px 28px;
+}
+
+#reset-cancel {
+    background: rgba(255, 255, 255, 0.10);
+    color: #fff;
+}
+
+#reset-cancel:hover {
+    background: rgba(255, 255, 255, 0.20);
+}
+
+#reset-confirm {
+    background: rgba(239, 68, 68, 0.25);
+    color: rgba(255, 255, 255, 0.70);
+}
+
+#reset-confirm:hover {
+    background: rgba(239, 68, 68, 0.55);
+    color: #fff;
+}
+
+/* ================================================================
    GEAR TOGGLE BUTTON  (bottom-right)
    ================================================================ */
 
