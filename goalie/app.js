@@ -47,7 +47,6 @@ function init() {
     base.style.backgroundRepeat   = 'no-repeat';
 
     initFireworks();
-    initFire();
 
     // Load persisted state from localStorage; fall back to a fresh session.
     let saved = {};
@@ -270,7 +269,6 @@ function ripTile(tile, ripDur = RIP_DURATION) {
     // Apply torn polygon clip-path right before animating
     tile.style.clipPath = tornEdge();
 
-    spawnFire(tile, ripDur);
     tile.classList.add('ripping');
 
     tile.addEventListener('animationend', () => {
